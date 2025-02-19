@@ -7,15 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { insertEventSchema, type Category, type Venue } from "@shared/schema";
+import { insertEventSchema, type InsertEvent, type Category, type Venue } from "@shared/schema";
+import { Loader2 } from "lucide-react";
 
 export default function CreateEvent() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const form = useForm({
+  const form = useForm<InsertEvent>({
     resolver: zodResolver(insertEventSchema),
     defaultValues: {
       title: "",
@@ -25,23 +26,26 @@ export default function CreateEvent() {
       imageUrl: "",
       venueId: 0,
       categoryId: 0,
-      organizerId: 1, // Hardcoded for demo
+      coordinatorId: 1, // Will be set by the server
       capacity: 0,
       isFeatured: false,
     },
   });
 
-  const { data: venues } = useQuery<Venue[]>({
+  const { data: venues, isLoading: venuesLoading } = useQuery<Venue[]>({
     queryKey: ["/api/venues"],
   });
 
-  const { data: categories } = useQuery<Category[]>({
+  const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
-  async function onSubmit(values: any) {
+  const isLoading = form.formState.isSubmitting || venuesLoading || categoriesLoading;
+
+  async function onSubmit(values: InsertEvent) {
     try {
       await apiRequest("POST", "/api/events", values);
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       toast({
         title: "Event created successfully!",
       });
@@ -49,10 +53,18 @@ export default function CreateEvent() {
     } catch (error) {
       toast({
         title: "Failed to create event",
-        description: "Please try again later.",
+        description: error instanceof Error ? error.message : "Please try again later.",
         variant: "destructive",
       });
     }
+  }
+
+  if (venuesLoading || categoriesLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -204,7 +216,16 @@ export default function CreateEvent() {
               )}
             />
 
-            <Button type="submit" size="lg">Create Event</Button>
+            <Button type="submit" size="lg" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Event'
+              )}
+            </Button>
           </form>
         </Form>
       </div>
