@@ -1,27 +1,39 @@
-import { type Event, type Venue, type Category, type Registration, type Review, type InsertEvent } from "@shared/schema";
+import { type Event, type Venue, type Category, type Registration, type Review, type InsertEvent, type User, type InsertUser } from "@shared/schema";
 import { nanoid } from "nanoid";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
+  // Users
+  createUser(user: Omit<InsertUser, "confirmPassword">): Promise<User>;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+
   // Events
   getEvents(): Promise<Event[]>;
   getEvent(id: number): Promise<Event | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   getFeaturedEvents(): Promise<Event[]>;
-  
+
   // Venues
   getVenues(): Promise<Venue[]>;
   getVenue(id: number): Promise<Venue | undefined>;
-  
+
   // Categories
   getCategories(): Promise<Category[]>;
-  
+
   // Registrations
   createRegistration(eventId: number, userId: number): Promise<Registration>;
   getRegistration(id: number): Promise<Registration | undefined>;
-  
+
   // Reviews
   getEventReviews(eventId: number): Promise<Review[]>;
   createReview(review: Omit<Review, "id" | "createdAt">): Promise<Review>;
+
+  // Session store
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
@@ -30,19 +42,49 @@ export class MemStorage implements IStorage {
   private categories: Map<number, Category> = new Map();
   private registrations: Map<number, Registration> = new Map();
   private reviews: Map<number, Review> = new Map();
+  private users: Map<number, User> = new Map();
   private currentIds: { [key: string]: number } = {
     events: 1,
     venues: 1,
     categories: 1,
     registrations: 1,
     reviews: 1,
+    users: 1,
   };
 
+  sessionStore: session.Store;
+
   constructor() {
+    // Initialize session store
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    });
+
     // Initialize with sample data
     this.initializeData();
   }
 
+  // User Methods
+  async createUser(userData: Omit<InsertUser, "confirmPassword">): Promise<User> {
+    const id = this.currentIds.users++;
+    const user: User = {
+      ...userData,
+      id,
+      createdAt: new Date(),
+    };
+    this.users.set(id, user);
+    return user;
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.email === email);
+  }
+
+  // Keep existing methods...
   private initializeData() {
     // Add venues
     const venues: Venue[] = [
@@ -83,7 +125,7 @@ export class MemStorage implements IStorage {
         imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176",
         venueId: 1,
         categoryId: 4,
-        organizerId: 1,
+        coordinatorId: 1,
         capacity: 500,
         isFeatured: true,
       },
@@ -91,7 +133,7 @@ export class MemStorage implements IStorage {
     events.forEach(e => this.events.set(e.id, e));
   }
 
-  // Event Methods
+  // Keep existing event methods...
   async getEvents(): Promise<Event[]> {
     return Array.from(this.events.values());
   }
@@ -111,7 +153,7 @@ export class MemStorage implements IStorage {
     return Array.from(this.events.values()).filter(e => e.isFeatured);
   }
 
-  // Venue Methods
+  // Keep other existing methods...
   async getVenues(): Promise<Venue[]> {
     return Array.from(this.venues.values());
   }
@@ -120,12 +162,10 @@ export class MemStorage implements IStorage {
     return this.venues.get(id);
   }
 
-  // Category Methods
   async getCategories(): Promise<Category[]> {
     return Array.from(this.categories.values());
   }
 
-  // Registration Methods
   async createRegistration(eventId: number, userId: number): Promise<Registration> {
     const id = this.currentIds.registrations++;
     const registration: Registration = {
@@ -143,7 +183,6 @@ export class MemStorage implements IStorage {
     return this.registrations.get(id);
   }
 
-  // Review Methods
   async getEventReviews(eventId: number): Promise<Review[]> {
     return Array.from(this.reviews.values()).filter(r => r.eventId === eventId);
   }

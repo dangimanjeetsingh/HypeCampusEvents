@@ -2,8 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertEventSchema, insertReviewSchema } from "@shared/schema";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication routes
+  setupAuth(app);
+
   // Events
   app.get("/api/events", async (req, res) => {
     const events = await storage.getEvents();
@@ -24,6 +28,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/events", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Must be logged in to create events" });
+    }
+
     const result = insertEventSchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({ message: "Invalid event data" });
@@ -46,9 +54,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Registrations
   app.post("/api/events/:id/register", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Must be logged in to register for events" });
+    }
+
     const eventId = Number(req.params.id);
-    const userId = 1; // Hardcoded for demo
-    const registration = await storage.createRegistration(eventId, userId);
+    const registration = await storage.createRegistration(eventId, req.user.id);
     res.status(201).json(registration);
   });
 
@@ -59,10 +70,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/events/:id/reviews", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Must be logged in to post reviews" });
+    }
+
     const result = insertReviewSchema.safeParse({
       ...req.body,
       eventId: Number(req.params.id),
-      userId: 1, // Hardcoded for demo
+      userId: req.user.id,
     });
     if (!result.success) {
       return res.status(400).json({ message: "Invalid review data" });
