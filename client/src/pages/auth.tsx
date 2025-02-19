@@ -16,12 +16,6 @@ export default function AuthPage() {
   const { loginMutation, registerMutation, user } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
 
-  // Redirect if already logged in
-  if (user) {
-    setLocation("/");
-    return null;
-  }
-
   const form = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -32,6 +26,12 @@ export default function AuthPage() {
       confirmPassword: "",
     },
   });
+
+  // Redirect if already logged in
+  if (user) {
+    setLocation("/");
+    return null;
+  }
 
   async function onSubmit(values: InsertUser) {
     if (mode === "register") {
@@ -49,7 +49,7 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-8">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Welcome to HYPECREW</CardTitle>
+            <CardTitle>HYPECREW</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs value={mode} onValueChange={(v) => setMode(v as "login" | "register")}>
