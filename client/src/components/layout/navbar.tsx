@@ -55,8 +55,8 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/">
-            {/* Change the logo theme by using different components */}
-            <LogoTheme1 />
+            {/* Changed to Theme2 for better visibility */}
+            <LogoTheme2 />
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
