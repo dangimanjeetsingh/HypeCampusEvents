@@ -68,8 +68,10 @@ export const insertUserSchema = createInsertSchema(users).extend({
 });
 
 export const insertEventSchema = createInsertSchema(events).extend({
-  startDate: z.string().or(z.date()),
-  endDate: z.string().or(z.date()),
+  startDate: z.string(),
+  endDate: z.string(),
+}).omit({
+  id: true,
 });
 
 export const insertRegistrationSchema = createInsertSchema(registrations);

@@ -11,10 +11,18 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertEventSchema, type InsertEvent, type Category, type Venue } from "@shared/schema";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function CreateEvent() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Redirect if not logged in or not a coordinator
+  if (!user || user.role !== "coordinator") {
+    setLocation("/auth");
+    return null;
+  }
 
   const form = useForm<InsertEvent>({
     resolver: zodResolver(insertEventSchema),
@@ -26,7 +34,7 @@ export default function CreateEvent() {
       imageUrl: "",
       venueId: 0,
       categoryId: 0,
-      coordinatorId: 1, // Will be set by the server
+      coordinatorId: user.id,
       capacity: 0,
       isFeatured: false,
     },
@@ -44,7 +52,13 @@ export default function CreateEvent() {
 
   async function onSubmit(values: InsertEvent) {
     try {
-      await apiRequest("POST", "/api/events", values);
+      const eventData = {
+        ...values,
+        startDate: new Date(values.startDate).toISOString(),
+        endDate: new Date(values.endDate).toISOString(),
+      };
+
+      await apiRequest("POST", "/api/events", eventData);
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       toast({
         title: "Event created successfully!",
@@ -110,7 +124,11 @@ export default function CreateEvent() {
                   <FormItem>
                     <FormLabel>Start Date</FormLabel>
                     <FormControl>
-                      <Input type="datetime-local" {...field} />
+                      <Input 
+                        type="datetime-local" 
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -124,7 +142,11 @@ export default function CreateEvent() {
                   <FormItem>
                     <FormLabel>End Date</FormLabel>
                     <FormControl>
-                      <Input type="datetime-local" {...field} />
+                      <Input 
+                        type="datetime-local" 
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -140,7 +162,7 @@ export default function CreateEvent() {
                   <FormLabel>Venue</FormLabel>
                   <Select
                     onValueChange={(value) => field.onChange(Number(value))}
-                    defaultValue={String(field.value)}
+                    value={field.value ? String(field.value) : undefined}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -168,7 +190,7 @@ export default function CreateEvent() {
                   <FormLabel>Category</FormLabel>
                   <Select
                     onValueChange={(value) => field.onChange(Number(value))}
-                    defaultValue={String(field.value)}
+                    value={field.value ? String(field.value) : undefined}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -195,7 +217,12 @@ export default function CreateEvent() {
                 <FormItem>
                   <FormLabel>Capacity</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
+                    <Input 
+                      type="number" 
+                      {...field} 
+                      onChange={e => field.onChange(Number(e.target.value))} 
+                      min="0"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -209,7 +236,7 @@ export default function CreateEvent() {
                 <FormItem>
                   <FormLabel>Image URL</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} type="url" placeholder="https://example.com/image.jpg" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
