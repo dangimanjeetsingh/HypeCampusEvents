@@ -14,7 +14,7 @@ const LogoTheme1 = () => (
 const LogoTheme2 = () => (
   <span className="font-black text-2xl tracking-widest relative">
     <span className="text-primary">HYPE</span>
-    <span className="text-secondary">CREW</span>
+    <span className="text-primary">CREW</span>
   </span>
 );
 
