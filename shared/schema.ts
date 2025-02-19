@@ -2,6 +2,15 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  name: text("name").notNull(),
+  role: text("role", { enum: ["student", "coordinator"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -25,7 +34,7 @@ export const events = pgTable("events", {
   imageUrl: text("image_url").notNull(),
   venueId: integer("venue_id").notNull(),
   categoryId: integer("category_id").notNull(),
-  organizerId: integer("organizer_id").notNull(),
+  coordinatorId: integer("coordinator_id").notNull(),
   capacity: integer("capacity").notNull(),
   isFeatured: boolean("is_featured").default(false),
 });
@@ -48,6 +57,16 @@ export const reviews = pgTable("reviews", {
 });
 
 // Insert Schemas
+export const insertUserSchema = createInsertSchema(users).extend({
+  confirmPassword: z.string(),
+}).omit({
+  id: true,
+  createdAt: true,
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 export const insertEventSchema = createInsertSchema(events).extend({
   startDate: z.string().or(z.date()),
   endDate: z.string().or(z.date()),
@@ -57,6 +76,8 @@ export const insertRegistrationSchema = createInsertSchema(registrations);
 export const insertReviewSchema = createInsertSchema(reviews);
 
 // Types
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Venue = typeof venues.$inferSelect;
