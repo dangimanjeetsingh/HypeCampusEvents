@@ -10,7 +10,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Events
   app.get("/api/events", async (req, res) => {
-    const events = await storage.getEvents();
+    const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
+    let events;
+    
+    if (categoryId) {
+      events = await storage.getEventsByCategory(categoryId);
+    } else {
+      events = await storage.getEvents();
+    }
+    
     res.json(events);
   });
 
@@ -50,6 +58,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/categories", async (req, res) => {
     const categories = await storage.getCategories();
     res.json(categories);
+  });
+
+  app.get("/api/categories/:id", async (req, res) => {
+    const category = await storage.getCategory(Number(req.params.id));
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+    res.json(category);
+  });
+
+  app.get("/api/categories/:id/events", async (req, res) => {
+    const categoryId = Number(req.params.id);
+    const category = await storage.getCategory(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+    const events = await storage.getEventsByCategory(categoryId);
+    res.json(events);
   });
 
   // Registrations
