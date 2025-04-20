@@ -16,6 +16,7 @@ export interface IStorage {
   getEvent(id: number): Promise<Event | undefined>;
   createEvent(event: InsertEvent): Promise<Event>;
   getFeaturedEvents(): Promise<Event[]>;
+  getEventsByCategory(categoryId: number): Promise<Event[]>;
 
   // Venues
   getVenues(): Promise<Venue[]>;
@@ -23,6 +24,7 @@ export interface IStorage {
 
   // Categories
   getCategories(): Promise<Category[]>;
+  getCategory(id: number): Promise<Category | undefined>;
 
   // Registrations
   createRegistration(eventId: number, userId: number): Promise<Registration>;
@@ -119,15 +121,80 @@ export class MemStorage implements IStorage {
       {
         id: this.currentIds.events++,
         title: "Annual Tech Fest",
-        description: "Join us for the biggest tech event of the year!",
+        description: "Join us for the biggest tech event of the year! Participate in hackathons, workshops, and tech talks from industry experts.",
         startDate: new Date("2024-04-15T10:00:00"),
         endDate: new Date("2024-04-17T18:00:00"),
         imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176",
         venueId: 1,
-        categoryId: 4,
+        categoryId: 4, // Technical
         coordinatorId: 1,
         capacity: 500,
         isFeatured: true,
+      },
+      {
+        id: this.currentIds.events++,
+        title: "University Cricket Tournament",
+        description: "The annual inter-department cricket tournament. Come support your department's team and enjoy a day of exciting matches.",
+        startDate: new Date("2024-04-25T09:00:00"),
+        endDate: new Date("2024-04-27T18:00:00"),
+        imageUrl: "https://images.unsplash.com/photo-1531415074968-036ba1b575da",
+        venueId: 2, // Sports Complex
+        categoryId: 3, // Sports
+        coordinatorId: 1,
+        capacity: 800,
+        isFeatured: true,
+      },
+      {
+        id: this.currentIds.events++,
+        title: "Cultural Night",
+        description: "A celebration of diverse cultures through music, dance, and art performances by students from various backgrounds.",
+        startDate: new Date("2024-05-10T18:00:00"),
+        endDate: new Date("2024-05-10T22:00:00"),
+        imageUrl: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6a3",
+        venueId: 1, // University Auditorium
+        categoryId: 2, // Cultural
+        coordinatorId: 1,
+        capacity: 450,
+        isFeatured: false,
+      },
+      {
+        id: this.currentIds.events++,
+        title: "Research Symposium",
+        description: "A platform for students and faculty to present their research work and exchange ideas in various academic disciplines.",
+        startDate: new Date("2024-05-20T09:00:00"),
+        endDate: new Date("2024-05-21T17:00:00"),
+        imageUrl: "https://images.unsplash.com/photo-1555421689-d68471e189f2",
+        venueId: 1, // University Auditorium
+        categoryId: 1, // Academic
+        coordinatorId: 1,
+        capacity: 300,
+        isFeatured: false,
+      },
+      {
+        id: this.currentIds.events++,
+        title: "Football Championship",
+        description: "The annual football championship between different colleges of the university. Don't miss this exciting sporting event!",
+        startDate: new Date("2024-06-05T10:00:00"),
+        endDate: new Date("2024-06-07T18:00:00"),
+        imageUrl: "https://images.unsplash.com/photo-1508098682722-e99c643e7f5c",
+        venueId: 2, // Sports Complex
+        categoryId: 3, // Sports
+        coordinatorId: 1,
+        capacity: 1000,
+        isFeatured: true,
+      },
+      {
+        id: this.currentIds.events++,
+        title: "Robotics Workshop",
+        description: "Learn the basics of robotics and participate in hands-on activities to build and program simple robots.",
+        startDate: new Date("2024-06-15T10:00:00"),
+        endDate: new Date("2024-06-16T17:00:00"),
+        imageUrl: "https://images.unsplash.com/photo-1599008633840-052c7f756385",
+        venueId: 1, // University Auditorium
+        categoryId: 4, // Technical
+        coordinatorId: 1,
+        capacity: 150,
+        isFeatured: false,
       },
     ];
     events.forEach(e => this.events.set(e.id, e));
@@ -164,6 +231,14 @@ export class MemStorage implements IStorage {
 
   async getCategories(): Promise<Category[]> {
     return Array.from(this.categories.values());
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    return this.categories.get(id);
+  }
+
+  async getEventsByCategory(categoryId: number): Promise<Event[]> {
+    return Array.from(this.events.values()).filter(e => e.categoryId === categoryId);
   }
 
   async createRegistration(eventId: number, userId: number): Promise<Registration> {
