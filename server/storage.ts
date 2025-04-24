@@ -107,6 +107,19 @@ export class MemStorage implements IStorage {
     ];
     venues.forEach(v => this.venues.set(v.id, v));
 
+    // Add default users
+    const users: User[] = [
+      {
+        id: this.currentIds.users++,
+        email: "itsnewforyou@gmail.com",
+        password: "$2b$10$F.E2DQizdMlvHY3LcLgqL.0z7wGwGEPCgKsR4vxhT9BzWMV.lh3H.", // hashed password for '1111'
+        name: "Admin User",
+        role: "coordinator",
+        createdAt: new Date(),
+      },
+    ];
+    users.forEach(u => this.users.set(u.id, u));
+
     // Add categories
     const categories: Category[] = [
       { id: this.currentIds.categories++, name: "Academic", slug: "academic" },
