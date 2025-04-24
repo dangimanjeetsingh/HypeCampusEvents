@@ -213,7 +213,7 @@ export class MemStorage implements IStorage {
     events.forEach(e => this.events.set(e.id, e));
   }
 
-  // Keep existing event methods...
+  // Event methods
   async getEvents(): Promise<Event[]> {
     return Array.from(this.events.values());
   }
@@ -224,9 +224,65 @@ export class MemStorage implements IStorage {
 
   async createEvent(event: InsertEvent): Promise<Event> {
     const id = this.currentIds.events++;
-    const newEvent = { ...event, id };
+    
+    // Convert string dates to Date objects
+    const startDate = new Date(event.startDate);
+    const endDate = new Date(event.endDate);
+    
+    const newEvent: Event = { 
+      ...event, 
+      id,
+      startDate,
+      endDate
+    };
+    
     this.events.set(id, newEvent);
     return newEvent;
+  }
+
+  async updateEvent(id: number, eventData: Partial<InsertEvent>): Promise<Event> {
+    const existingEvent = this.events.get(id);
+    if (!existingEvent) {
+      throw new Error(`Event with id ${id} not found`);
+    }
+
+    // Convert string dates to Date objects if they exist in the update data
+    const startDate = eventData.startDate ? new Date(eventData.startDate) : existingEvent.startDate;
+    const endDate = eventData.endDate ? new Date(eventData.endDate) : existingEvent.endDate;
+    
+    const updatedEvent: Event = {
+      ...existingEvent,
+      ...eventData,
+      startDate,
+      endDate
+    };
+    
+    this.events.set(id, updatedEvent);
+    return updatedEvent;
+  }
+
+  async deleteEvent(id: number): Promise<void> {
+    if (!this.events.has(id)) {
+      throw new Error(`Event with id ${id} not found`);
+    }
+    
+    this.events.delete(id);
+    
+    // Also delete any registrations for this event
+    const eventRegistrations = Array.from(this.registrations.values())
+      .filter(r => r.eventId === id);
+      
+    for (const reg of eventRegistrations) {
+      this.registrations.delete(reg.id);
+    }
+    
+    // Also delete any reviews for this event
+    const eventReviews = Array.from(this.reviews.values())
+      .filter(r => r.eventId === id);
+      
+    for (const review of eventReviews) {
+      this.reviews.delete(review.id);
+    }
   }
 
   async getFeaturedEvents(): Promise<Event[]> {

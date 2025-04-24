@@ -40,12 +40,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Must be logged in to create events" });
     }
 
+    // Check if the user is a coordinator
+    if (req.user.role !== 'coordinator') {
+      return res.status(403).json({ message: "Only coordinators can create events" });
+    }
+
     const result = insertEventSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ message: "Invalid event data" });
+      return res.status(400).json({ message: "Invalid event data", errors: result.error.format() });
     }
-    const event = await storage.createEvent(result.data);
+    
+    // Make sure coordinatorId is set to the current user
+    const eventData = { ...result.data, coordinatorId: req.user.id };
+    const event = await storage.createEvent(eventData);
     res.status(201).json(event);
+  });
+  
+  // Update event
+  app.patch("/api/events/:id", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Must be logged in to update events" });
+    }
+
+    // Check if the user is a coordinator
+    if (req.user.role !== 'coordinator') {
+      return res.status(403).json({ message: "Only coordinators can update events" });
+    }
+
+    const eventId = Number(req.params.id);
+    const event = await storage.getEvent(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Validate the update data
+    const result = insertEventSchema.partial().safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: "Invalid event data", errors: result.error.format() });
+    }
+
+    // Update the event
+    const updatedEvent = await storage.updateEvent(eventId, result.data);
+    res.json(updatedEvent);
+  });
+  
+  // Delete event
+  app.delete("/api/events/:id", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Must be logged in to delete events" });
+    }
+
+    // Check if the user is a coordinator
+    if (req.user.role !== 'coordinator') {
+      return res.status(403).json({ message: "Only coordinators can delete events" });
+    }
+
+    const eventId = Number(req.params.id);
+    const event = await storage.getEvent(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    // Delete the event
+    await storage.deleteEvent(eventId);
+    res.status(204).send();
   });
 
   // Venues
