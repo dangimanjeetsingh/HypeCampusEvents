@@ -229,11 +229,15 @@ export class MemStorage implements IStorage {
     const startDate = new Date(event.startDate);
     const endDate = new Date(event.endDate);
     
+    // Set default for isFeatured if undefined
+    const isFeatured = event.isFeatured === undefined ? false : event.isFeatured;
+    
     const newEvent: Event = { 
       ...event, 
       id,
       startDate,
-      endDate
+      endDate,
+      isFeatured
     };
     
     this.events.set(id, newEvent);
@@ -250,11 +254,17 @@ export class MemStorage implements IStorage {
     const startDate = eventData.startDate ? new Date(eventData.startDate) : existingEvent.startDate;
     const endDate = eventData.endDate ? new Date(eventData.endDate) : existingEvent.endDate;
     
+    // Preserve isFeatured if not provided in update
+    const isFeatured = eventData.isFeatured === undefined 
+      ? existingEvent.isFeatured 
+      : eventData.isFeatured;
+    
     const updatedEvent: Event = {
       ...existingEvent,
       ...eventData,
       startDate,
-      endDate
+      endDate,
+      isFeatured
     };
     
     this.events.set(id, updatedEvent);

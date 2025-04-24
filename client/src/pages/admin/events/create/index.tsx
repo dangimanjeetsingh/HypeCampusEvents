@@ -314,7 +314,7 @@ export default function CreateEvent() {
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0 border p-4 rounded-md">
                   <FormControl>
                     <Checkbox
-                      checked={field.value}
+                      checked={field.value === true}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>

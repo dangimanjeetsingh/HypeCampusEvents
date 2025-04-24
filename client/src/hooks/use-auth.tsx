@@ -7,7 +7,10 @@ import { type User, type InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-type LoginData = Pick<InsertUser, "email" | "password">;
+type LoginData = {
+  email: string;
+  password: string;
+};
 
 type AuthContextType = {
   user: User | null;

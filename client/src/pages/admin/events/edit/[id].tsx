@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation, Link } from "wouter";
+import { useLocation, Link, useRoute } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,7 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ChevronLeft, Save, Loader2 } from "lucide-react";
 import { insertEventSchema, type Event, type Venue, type Category } from "@shared/schema";
 import type { z } from "zod";
-import { useState, useEffect } from "react";
+import { format } from "date-fns";
 
 import {
   Form,
@@ -36,16 +36,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 type EventFormData = z.infer<typeof insertEventSchema>;
 
 export default function EditEvent() {
-  const [, params] = useRoute("/admin/events/edit/:id");
-  const eventId = params?.id ? parseInt(params.id) : 0;
   const [, navigate] = useLocation();
+  const [match, params] = useRoute<{ id: string }>("/admin/events/edit/:id");
+  const eventId = match ? parseInt(params.id) : -1;
+  
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch event data
   const { data: event, isLoading: eventLoading } = useQuery<Event>({
-    queryKey: [`/api/events/${eventId}`],
-    enabled: Boolean(eventId),
+    queryKey: ["/api/events", eventId],
+    queryFn: async () => {
+      if (eventId < 0) return undefined;
+      const res = await fetch(`/api/events/${eventId}`);
+      if (!res.ok) throw new Error("Failed to fetch event");
+      return res.json();
+    },
+    enabled: eventId > 0,
   });
 
   const { data: venues, isLoading: venuesLoading } = useQuery<Venue[]>({
@@ -56,47 +64,40 @@ export default function EditEvent() {
     queryKey: ["/api/categories"],
   });
 
+  // Initialize form with existing event data when loaded
   const form = useForm<EventFormData>({
     resolver: zodResolver(insertEventSchema),
     defaultValues: {
       title: "",
       description: "",
       imageUrl: "",
-      venueId: 0,
-      categoryId: 0,
-      capacity: 0,
-      coordinatorId: 0,
+      venueId: 1,
+      categoryId: 1,
+      capacity: 100,
+      coordinatorId: user?.id || 1,
       startDate: "",
       endDate: "",
       isFeatured: false,
     },
+    values: event ? {
+      ...event,
+      // Format dates for datetime-local input
+      startDate: event.startDate instanceof Date
+        ? format(new Date(event.startDate), "yyyy-MM-dd'T'HH:mm")
+        : format(new Date(event.startDate), "yyyy-MM-dd'T'HH:mm"),
+      endDate: event.endDate instanceof Date
+        ? format(new Date(event.endDate), "yyyy-MM-dd'T'HH:mm")
+        : format(new Date(event.endDate), "yyyy-MM-dd'T'HH:mm"),
+    } : undefined,
   });
-
-  // Set form values when event data is loaded
-  useEffect(() => {
-    if (event) {
-      form.reset({
-        title: event.title,
-        description: event.description,
-        imageUrl: event.imageUrl,
-        venueId: event.venueId,
-        categoryId: event.categoryId,
-        capacity: event.capacity,
-        coordinatorId: event.coordinatorId,
-        startDate: new Date(event.startDate).toISOString().substring(0, 16),
-        endDate: new Date(event.endDate).toISOString().substring(0, 16),
-        isFeatured: event.isFeatured,
-      });
-    }
-  }, [event, form]);
 
   const updateEventMutation = useMutation({
     mutationFn: async (data: EventFormData) => {
       return await apiRequest("PATCH", `/api/events/${eventId}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/events/${eventId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events", eventId] });
       toast({
         title: "Event updated",
         description: "The event has been successfully updated",
@@ -116,7 +117,9 @@ export default function EditEvent() {
     updateEventMutation.mutate(data);
   }
 
-  if (authLoading || eventLoading || venuesLoading || categoriesLoading) {
+  const isLoading = authLoading || eventLoading || venuesLoading || categoriesLoading;
+
+  if (isLoading) {
     return (
       <div className="container mx-auto py-8">
         <div className="max-w-3xl mx-auto">
@@ -137,6 +140,11 @@ export default function EditEvent() {
 
   if (!user || user.role !== "coordinator") {
     navigate("/");
+    return null;
+  }
+
+  if (!event) {
+    navigate("/admin/events");
     return null;
   }
 
@@ -195,6 +203,9 @@ export default function EditEvent() {
                   <FormControl>
                     <Input placeholder="Enter image URL" {...field} />
                   </FormControl>
+                  <FormDescription>
+                    Enter a URL for your event image. Try using Unsplash for free high-quality images.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -318,7 +329,7 @@ export default function EditEvent() {
                       <Input 
                         type="hidden" 
                         {...field}
-                        value={user?.id || 1}
+                        value={user?.id || event.coordinatorId}
                       />
                     </FormControl>
                     <p className="border px-3 py-2 rounded-md text-muted-foreground bg-muted/50">
@@ -337,7 +348,7 @@ export default function EditEvent() {
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0 border p-4 rounded-md">
                   <FormControl>
                     <Checkbox
-                      checked={field.value}
+                      checked={field.value === true}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
@@ -362,7 +373,7 @@ export default function EditEvent() {
               {!updateEventMutation.isPending && (
                 <Save className="mr-2 h-4 w-4" />
               )}
-              Save Changes
+              Update Event
             </Button>
           </form>
         </Form>
